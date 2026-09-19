@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>筋トレ継続アプリ（試作版）</title>
+<meta name="apple-mobile-web-app-title" content="筋トレ（試作）">
+<meta name="theme-color" content="#FAFAF9">
+<style>
+/* ============================================================
+   設計言語（参照UIから抽出）
+   白基調 / 1pxの細い線 / 淡い色面 / 黒の主ボタン / 影なし
+   ============================================================ */
+:root{
+  --bg:#FAFAF9;
+  --card:#FFFFFF;
+  --sunken:#F5F5F4;
+  --line:#E7E5E4;
+  --line2:#D6D3D1;
+  --txt:#1C1917;
+  --dim:#78716C;
+  --dim2:#A8A29E;
+  --ink:#171717;
+
+  --blue-bg:#EFF4FF;
+  --blue-line:#C7D9F7;
+  --blue-txt:#2563A8;
+
+  --mint-bg:#E8F6F1;
+  --mint-line:#A9DECD;
+  --mint-txt:#1F7A5E;
+  --mint:#4FC0A8;
+
+  --rose-bg:#FDF0EE;
+  --rose-line:#F3C9C0;
+  --rose-txt:#B4503C;
+
+  --r-card:14px;
+  --r-btn:10px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+#app{max-width:430px;margin:0 auto;padding:20px 16px 64px;min-height:100vh}
+
+/* ---------- 部品 ---------- */
+.seclabel{font-size:12px;color:var(--dim);margin:22px 2px 8px;font-weight:600;letter-spacing:.02em}
+.seclabel:first-child{margin-top:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:18px 16px}
+.card + .card{margin-top:10px}
+.card.tight{padding:14px 16px}
+.card.sunken{background:var(--sunken);border-color:var(--line)}
+
+.h1{font-size:19px;font-weight:700;line-height:1.5;margin:0 0 2px}
+.h2{font-size:15px;font-weight:700;margin:0 0 6px}
+.sub{font-size:13px;color:var(--dim);margin:0}
+.tiny{font-size:12px;color:var(--dim2);line-height:1.6}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+.btn{
+  display:block;width:100%;border:none;border-radius:var(--r-btn);
+  padding:14px 16px;font-size:15px;font-weight:700;font-family:inherit;
+  cursor:pointer;text-align:center;transition:opacity .12s;
+}
+.btn:active{opacity:.72}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-blue{background:var(--blue-bg);color:var(--blue-txt);border:1px solid var(--blue-line)}
+.btn-mint{background:var(--mint-bg);color:var(--mint-txt);border:1px solid var(--mint-line)}
+.btn-plain{background:var(--card);color:var(--txt);border:1px solid var(--line)}
+.btn-ghost{background:transparent;color:var(--dim);font-weight:600;font-size:13px;padding:10px}
+.btn + .btn{margin-top:8px}
+.row{display:flex;gap:8px}
+.row > .btn{margin-top:0}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid1{display:grid;grid-template-columns:1fr;gap:8px}
+
+.chip{
+  border:1px solid var(--line);background:var(--card);border-radius:var(--r-btn);
+  padding:11px 6px;font-size:13px;font-weight:600;font-family:inherit;color:var(--txt);
+  cursor:pointer;text-align:center;
+}
+.chip.on{background:var(--mint-bg);border-color:var(--mint-line);color:var(--mint-txt)}
+.chip:active{opacity:.72}
+
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:none;padding-bottom:0}
+.kv:first-child{padding-top:0}
+.kv .k{font-size:13px;color:var(--dim)}
+.kv .v{font-size:15px;font-weight:700}
+.kv .v small{font-size:12px;font-weight:600;color:var(--dim);margin-left:2px}
+
+.note{border-radius:var(--r-btn);padding:12px 14px;font-size:13px;line-height:1.65}
+.note-rose{background:var(--rose-bg);border:1px solid var(--rose-line);color:var(--rose-txt)}
+.note-mint{background:var(--mint-bg);border:1px solid var(--mint-line);color:var(--mint-txt)}
+.note-gray{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
+.note b{font-weight:700}
+
+.dots{display:flex;gap:4px;margin-bottom:16px}
+.dot{height:4px;flex:1;border-radius:2px;background:var(--line2)}
+.dot.on{background:var(--mint)}
+
+input[type=text],input[type=url],input[type=number]{
+  width:100%;border:1px solid var(--line);border-radius:var(--r-btn);
+  padding:11px 12px;font-size:14px;font-family:inherit;color:var(--txt);background:var(--card);
+}
+input:focus{outline:2px solid var(--mint-line);outline-offset:-1px}
+label.fl{display:block;font-size:12px;font-weight:600;color:var(--dim);margin:0 0 6px}
+.field + .field{margin-top:14px}
+
+/* ---------- セット画面 ---------- */
+.stage{min-height:calc(100vh - 40px);display:flex;flex-direction:column}
+.stage-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px 0}
+.ring-wrap{position:relative;width:236px;height:236px}
+.ring-wrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--line);stroke-width:6}
+.ring-fg{fill:none;stroke:var(--mint);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .18s linear}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.repnum{font-size:64px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.reptot{font-size:15px;color:var(--dim);font-weight:600;margin-top:6px}
+.phase{font-size:14px;font-weight:700;color:var(--dim);letter-spacing:.14em;height:22px}
+.phase.down{color:var(--blue-txt)}
+.phase.up{color:var(--mint-txt)}
+.pulse{transition:transform .25s cubic-bezier(.2,.9,.3,1)}
+.pulse.big{transform:scale(1.045)}
+
+.moodbtn{
+  border:1px solid var(--line);background:var(--card);border-radius:var(--r-card);
+  padding:22px 12px;font-family:inherit;cursor:pointer;text-align:center;width:100%;
+}
+.moodbtn .em{font-size:30px;line-height:1.2}
+.moodbtn .lb{font-size:15px;font-weight:700;margin-top:4px}
+.moodbtn .ds{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.5}
+.moodbtn.good{background:var(--mint-bg);border-color:var(--mint-line)}
+.moodbtn.hard{background:var(--blue-bg);border-color:var(--blue-line)}
+.moodbtn:active{opacity:.72}
+
+.timerbig{font-size:56px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+
+.hidden{display:none !important}
+.center{text-align:center}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+.divider{height:1px;background:var(--line);margin:14px 0}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+  padding:11px 18px;border-radius:999px;z-index:99;max-width:88vw;text-align:center;
+  opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<audio id="pod" preload="none"></audio>
+
+<script>
+"use strict";
+
+/* ==========================================================
+   0. 種目の「はしご」— レベルが下がるほど軽い
+   気分メーターは自動で下げるだけ。上げるのは本人が選んだときだけ。
+   ========================================================== */
+const EXERCISES = [
+  // part: upper(上半身の押す)/back(背中)/lower(下半身)/core(体幹)/cardio(体力)
+  // place: home=自宅（器具なし） gym=ジム
+  { id:"push", name:"腕立て伏せ", part:"upper", place:["home"], levels:[
+      {n:"壁腕立て",      reps:5},
+      {n:"壁腕立て",      reps:10},
+      {n:"膝つき腕立て",  reps:5},
+      {n:"膝つき腕立て",  reps:8},
+      {n:"膝つき腕立て",  reps:12},
+      {n:"腕立て伏せ",    reps:5},
+      {n:"腕立て伏せ",    reps:8},
+      {n:"腕立て伏せ",    reps:12},
+      {n:"腕立て伏せ",    reps:15},
+  ]},
+  { id:"squat", name:"スクワット", part:"lower", place:["home"], levels:[
+      {n:"椅子スクワット", reps:5},
+      {n:"椅子スクワット", reps:10},
+      {n:"スクワット",     reps:5},
+      {n:"スクワット",     reps:10},
+      {n:"スクワット",     reps:15},
+      {n:"スクワット",     reps:20},
+      {n:"スクワット",     reps:25},
+  ]},
+  { id:"crunch", name:"上体起こし", part:"core", place:["home","gym"], levels:[
+      {n:"クランチ", reps:5},
+      {n:"クランチ", reps:10},
+      {n:"クランチ", reps:15},
+      {n:"クランチ", reps:20},
+      {n:"クランチ", reps:25},
+      {n:"クランチ", reps:30},
+  ]},
+  { id:"lunge", name:"ランジ", part:"lower", place:["home"], levels:[
+      {n:"壁に手をついてランジ", reps:6},
+      {n:"壁に手をついてランジ", reps:10},
+      {n:"ランジ", reps:6},
+      {n:"ランジ", reps:10},
+      {n:"ランジ", reps:14},
+      {n:"ランジ", reps:20},
+  ]},
+  { id:"superman", name:"背中（スーパーマン）", part:"back", place:["home"], levels:[
+      {n:"スーパーマン", reps:5},
+      {n:"スーパーマン", reps:8},
+      {n:"スーパーマン", reps:12},
+      {n:"スーパーマン", reps:15},
+      {n:"スーパーマン", reps:20},
+  ]},
+  { id:"legraise", name:"脚上げ", part:"core", place:["home","gym"], levels:[
+      {n:"膝を曲げた脚上げ", reps:5},
+      {n:"膝を曲げた脚上げ", reps:10},
+      {n:"レッグレイズ", reps:5},
+      {n:"レッグレイズ", reps:10},
+      {n:"レッグレイズ", reps:15},
+  ]},
+  { id:"highknee", name:"その場もも上げ", part:"cardio", place:["home","gym"], tempo:900, levels:[
+      {n:"その場もも上げ", reps:20},
+      {n:"その場もも上げ", reps:30},
+      {n:"その場もも上げ", reps:40},
+      {n:"その場もも上げ", reps:60},
+  ]},
+  { id:"burpee", name:"バーピー", part:"cardio", place:["home","gym"], tempo:3500, levels:[
+      {n:"ゆっくりバーピー（跳ばない）", reps:3},
+      {n:"ゆっくりバーピー（跳ばない）", reps:5},
+      {n:"バーピー", reps:5},
+      {n:"バーピー", reps:8},
+      {n:"バーピー", reps:12},
+  ]},
+  gymLadder("chestpress",   "チェストプレス",           "upper"),
+  gymLadder("shoulderpress","ショルダープレス",         "upper"),
+  gymLadder("latpull",      "ラットプルダウン",         "back"),
+  gymLadder("legpress",     "レッグプレス",             "lower"),
+  gymLadder("legcurl",      "レッグカール",             "lower"),
+  gymLadder("abdominal",    "腹筋マシン",               "core"),
+];
+// ジムのマシン種目：重さの目安（軽め→普通→重め）と回数で段階をつくる
+function gymLadder(id,name,part){
+  const levels=[];
+  [["軽め",[8,10,12]],["普通",[8,10,12]],["重め",[8,10]]].forEach(([w,rs])=>rs.forEach(r=>levels.push({n:`${name}（${w}）`,reps:r})));
+  return {id,name,part,place:["gym"],levels};
+}
+function tempoFor(exId){ const e=EXERCISES.find(x=>x.id===exId); return (e&&e.tempo)||S.tempoMs; }
+
+/* ==========================================================
+   0b. 今日のメニューを自動で組む
+   いまはルールで組んでいる。将来ここをAI（LLM）に差し替える前提で、
+   入力（profile）と出力（{items, rest, estMin}）の形を固定している。
+   ========================================================== */
+const GOALS = {
+  look:    {label:"見た目を変えたい", parts:["upper","lower","back","core","upper"]},
+  health:  {label:"健康のため",       parts:["lower","upper","core","back","cardio"]},
+  stamina: {label:"体力をつけたい",   parts:["cardio","lower","upper","core","cardio"]},
+};
+const EXPS = {
+  first: {label:"初めて",         frac:0},
+  again: {label:"前にやっていた", frac:0.3},
+  cont:  {label:"今も続けている", frac:0.65},
+};
+const PLACES = { home:"自宅（器具なし）", gym:"ジム" };
+const TIMES = {
+  5:  {label:"5分",  n:3, sets:1, rest:30},
+  15: {label:"15分", n:4, sets:2, rest:60},
+  30: {label:"30分", n:5, sets:3, rest:60},
+};
+function dayNo(){ return Math.floor(parseDate(todayStr()).getTime()/86400000); }
+function buildMenu(profile, opt){
+  opt=opt||{};
+  const t = TIMES[opt.short ? 5 : profile.minutes];
+  const parts = GOALS[profile.goal].parts.slice(0, t.n);
+  const pool = EXERCISES.filter(e=>e.place.includes(profile.place));
+  const seed = dayNo(), used = new Set(), items = [];
+  parts.forEach((part,i)=>{
+    let c = pool.filter(e=>e.part===part && !used.has(e.id));
+    if(!c.length) c = pool.filter(e=>!used.has(e.id));
+    if(!c.length) return;
+    const ex = c[(seed+i) % c.length];      // 日によって種目が入れ替わる（同じ日は同じ）
+    used.add(ex.id);
+    items.push({ex:ex.id, name:ex.name, sets:t.sets});
+  });
+  // 所要時間の目安：動く時間＋準備と気分メーター15秒＋休憩（最後の休憩はない）
+  let sec = 0;
+  items.forEach(it=>{ const l=lvOf(it.ex); sec += it.sets*(l.reps*tempoFor(it.ex)/1000 + 15 + t.rest); });
+  sec -= t.rest;
+  return {items, rest:t.rest, estMin:Math.max(1, Math.round(sec/60))};
+}
+// 経験に合わせて、最初の段階を決める（気分メーターで下がるのは今までどおり）
+function applyExperience(exp){
+  const f = EXPS[exp].frac;
+  EXERCISES.forEach(e=>{ S.levels[e.id]=Math.floor((e.levels.length-1)*f); S.goodStreak[e.id]=0;
+    S.best[e.id]=Math.max(S.best[e.id]??0, S.levels[e.id]); });   // 開始段階は「上達」として記録しない
+}
+const REST_BANK_CAP = 4;
+const COMEBACK_DAYS = 7;
+const WAGER_STOP_STREAK = 3;
+// 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
+const LEGACY = false;
+
+/* ==========================================================
+   1. 状態
+   ========================================================== */
+const KEY = "kintore_proto_v1";
+let S = null;
+
+function todayStr(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parseDate(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function daysBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
+// 月曜はじまりの週キー
+function weekKey(d){
+  d = d ? new Date(d) : new Date();
+  const day = (d.getDay()+6)%7;           // 月=0
+  d.setDate(d.getDate()-day);
+  return todayStr(d);
+}
+
+function freshState(){
+  const lv = {};
+  EXERCISES.forEach(e=>lv[e.id]=0);
+  const gs = {};
+  EXERCISES.forEach(e=>gs[e.id]=0);
+  return {
+    v:1,
+    createdAt: todayStr(),
+    lastSessionDate: null,
+    sessions: [],                 // {date, sets:[{ex,reps,done,mood}], totalReps}
+    levels: lv,
+    goodStreak: gs,               // 種目ごとの「よかった」連続数
+    restBank: 0,
+    points: 3000,
+    promise: "",                  // 自分で書いた約束
+    tempoMs: 2400,
+    weekly: { key: weekKey(), target:3, done:0, wager:0, declared:false },
+    wagerEnabled: true,
+    lossStreak: 0,
+    ledger: [],                   // 精算の履歴
+    pendingWagerStop: false,
+    tomorrow: null,               // {date, ans}
+    audio: { rss:"", url:"", title:"", pos:0 },
+    profile: null,                // 最初の4問の答え {goal, exp, place, minutes}
+  };
+}
+let STORAGE_OK = true;
+function checkStorage(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); STORAGE_OK = true; }
+  catch(e){ STORAGE_OK = false; }
+}
+function load(){
+  checkStorage();
+  try{ const raw=localStorage.getItem(KEY); if(raw){ S=JSON.parse(raw); } }catch(e){}
+  if(!S || S.v!==1) S = freshState();
+  EXERCISES.forEach(e=>{ if(S.levels[e.id]==null) S.levels[e.id]=0; if(S.goodStreak[e.id]==null) S.goodStreak[e.id]=0; });
+  if(!S.photo)  S.photo  = { last:null, count:0 };   // 成長写真の枚数と最後に撮った日（写真そのものはIndexedDB）
+  if(!S.shares) S.shares = [];                       // 友達に送った記録（検証用）
+  if(!S.best)   S.best = {};                          // 種目ごとに到達した一番上の段階（上達の記録用）
+  EXERCISES.forEach(e=>{ if(S.best[e.id]==null) S.best[e.id]=S.levels[e.id]; });
+  if(!S.milestones) S.milestones = [];                // 上達の記録 {date, ex, name, from, to, newMove}
+  settleWeeks();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ STORAGE_OK=false; } }
+
+/* ---- 週の精算：静かに、開いた瞬間に済ませておく ----
+   復帰画面に請求を出さないために、精算は必ず先に終わらせる。 */
+function settleWeeks(){
+  const cur = weekKey();
+  if(!S.weekly){ S.weekly={key:cur,target:3,done:0,wager:0,declared:false}; return; }
+  if(S.weekly.key === cur) return;
+
+  const w = S.weekly;
+  let shortfall = Math.max(0, w.target - w.done);
+  let usedBank = 0, charged = 0, refunded = 0;
+
+  if(shortfall > 0){
+    usedBank = Math.min(shortfall, S.restBank);
+    S.restBank -= usedBank;
+    shortfall -= usedBank;
+  }
+  if(shortfall > 0 && w.wager > 0 && S.wagerEnabled){
+    charged = shortfall * w.wager;
+    S.points = Math.max(0, S.points - charged);
+    S.lossStreak++;
+  }else{
+    if(w.wager>0 && S.wagerEnabled && w.done>=w.target){
+      refunded = Math.round(w.wager*0.5);   // 達成者への分配（ダミー）
+      S.points += refunded;
+    }
+    S.lossStreak = 0;
+  }
+  if(w.declared || charged || refunded || usedBank){
+    S.ledger.unshift({week:w.key, target:w.target, done:w.done, wager:w.wager, usedBank, charged, refunded});
+    S.ledger = S.ledger.slice(0,20);
+  }
+  if(S.lossStreak >= WAGER_STOP_STREAK && S.wagerEnabled){
+    S.wagerEnabled = false;
+    S.pendingWagerStop = true;
+  }
+  S.weekly = { key:cur, target:w.target, done:0, wager:(S.wagerEnabled? w.wager : 0), declared:false };
+  save();
+}
+
+/* ---- 集計 ---- */
+function totalReps(){ return S.sessions.reduce((a,s)=>a+s.totalReps,0); }
+/* ---- 努力を数字で見せる ----
+   見せるのは「減らない数字」と「過去の自分との比較」だけ。他人との比較・カロリーは出さない。
+   ①②は自己申告なので、時間は「目安」と表示する。 */
+function uniqueDays(list){ return new Set((list||S.sessions).map(s=>s.date)).size; }
+// 1回の所要時間（秒）。時間を記録していない古いデータは回数から目安を出す
+function sessSec(s){ return (s.sec!=null) ? s.sec : Math.round(s.totalReps*2.4 + (s.sets?s.sets.length:0)*15); }
+function totalSec(){ return S.sessions.reduce((a,s)=>a+sessSec(s),0); }
+function fmtDur(sec){ const m=Math.round(sec/60); if(m<60) return m+"分"; const h=Math.floor(m/60), r=m%60; return h+"時間"+(r? r+"分":""); }
+function periodStats(from,to){
+  const ss = S.sessions.filter(s=>s.date>=from && s.date<=to);
+  return { days:uniqueDays(ss), reps:ss.reduce((a,s)=>a+s.totalReps,0), sec:ss.reduce((a,s)=>a+sessSec(s),0) };
+}
+function ymd(y,m,d){ return todayStr(new Date(y,m,d)); }
+function monthStats(offset){           // 0=今月（今日まで） -1=先月 …
+  const t = parseDate(todayStr()), y = t.getFullYear(), m = t.getMonth()+offset;
+  const from = ymd(y,m,1), to = offset===0 ? todayStr() : ymd(y,m+1,0);
+  return Object.assign({ label:(new Date(y,m,1).getMonth()+1)+"月", from, to }, periodStats(from,to));
+}
+function monthReview(){               // 今月と「先月の同じ日まで」を比べる（月初に少なく見えないように）
+  const t = parseDate(todayStr()), y = t.getFullYear(), m = t.getMonth(), d = t.getDate();
+  const lastLen = new Date(y,m,0).getDate();
+  return { cur:monthStats(0), last:monthStats(-1), lastSame:periodStats(ymd(y,m-1,1), ymd(y,m-1,Math.min(d,lastLen))) };
+}
+function weekCompare(){               // 今週と「先週の同じ曜日まで」
+  const k = daysBetween(weekKey(), todayStr());
+  const lm = parseDate(weekKey()); lm.setDate(lm.getDate()-7);
+  const ls = new Date(lm); ls.setDate(ls.getDate()+k);
+  return { cur:periodStats(weekKey(), todayStr()), last:periodStats(todayStr(lm), todayStr(ls)) };
+}
+function milestonesBetween(from,to){ return (S.milestones||[]).filter(x=>(!from || x.date>from) && x.date<=to); }
+function milestoneRow(x){ return `<div class="kv"><span class="k">${x.date}</span><span class="v" style="font-size:13px;font-weight:600">${x.name}：${x.from} → <b>${x.to}</b></span></div>`; }
+function daysSince(){ return S.lastSessionDate ? daysBetween(S.lastSessionDate, todayStr()) : null; }
+function isComeback(){ const d=daysSince(); return S.sessions.length>0 && d!==null && d>=COMEBACK_DAYS; }
+function lastSessionFor(exId){
+  for(const s of S.sessions){
+    const hit = s.sets.filter(x=>x.ex===exId);
+    if(hit.length) return hit;
+  }
+  return null;
+}
+function lvOf(exId){ const ex=EXERCISES.find(e=>e.id===exId); return ex.levels[Math.min(S.levels[exId], ex.levels.length-1)]; }
+
+/* ==========================================================
+   2. 音（WebAudio合成・音声素材ゼロ）
+   下ろす＝低い小さなクリック / 上げきった＝1音
+   目標回数の最後だけ和音で解決する
+   ========================================================== */
+const PENTA = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00,1046.50];
+const A = {
+  ctx:null,
+  init(){
+    if(this.ctx) return;
+    try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  },
+  resume(){ if(this.ctx && this.ctx.state==="suspended") this.ctx.resume(); },
+  tone(freq, {dur=0.85, type="triangle", gain=0.16, at=0}={}){
+    if(!this.ctx) return;
+    const t = this.ctx.currentTime + at;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(this.ctx.destination);
+    o.start(t); o.stop(t+dur+0.05);
+  },
+  tick(){ this.tone(140,{dur:0.10,type:"sine",gain:0.05}); },
+  // i回目 / 全n回。最後は和音。
+  rep(i,n){
+    if(i>=n){ this.chord(); return; }
+    const span = PENTA.length-3;
+    const idx = n<=1 ? 0 : Math.round((i-1)/(n-1)*span);
+    this.tone(PENTA[Math.min(idx,PENTA.length-1)], {dur:0.75, gain:0.15});
+  },
+  chord(){
+    [523.25,659.25,783.99,1046.50].forEach((f,k)=>{
+      this.tone(f,{dur:1.5, gain:0.13, at:k*0.045, type:"triangle"});
+    });
+  },
+  celebrate(){
+    [523.25,659.25,783.99,1046.50,1318.51].forEach((f,k)=>{
+      this.tone(f,{dur:1.1, gain:0.12, at:k*0.085});
+    });
+  },
+};
+
+/* ==========================================================
+   3. ポッドキャスト（トレーニング中しか再生しない）
+   ========================================================== */
+const POD = {
+  el(){ return document.getElementById("pod"); },
+  ready(){ return !!S.audio.url; },
+  start(){
+    if(!this.ready()) return;
+    const a = this.el();
+    if(a.src !== S.audio.url) a.src = S.audio.url;
+    a.volume = 0.8;
+    try{ if(S.audio.pos>0) a.currentTime = S.audio.pos; }catch(e){}
+    a.play().catch(()=>{});
+  },
+  duck(on){ const a=this.el(); if(a) a.volume = on?0.30:0.80; },
+  stop(){
+    const a=this.el();
+    if(!a) return;
+    S.audio.pos = a.currentTime||0;
+    a.pause(); save();
+  },
+};
+
+/* ==========================================================
+   4. 画面
+   ========================================================== */
+const app = ()=>document.getElementById("app");
+let view = "home";
+let sess = null;   // セッション中の一時状態
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2000);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function render(){
+  if(view==="home")      return renderHome();
+  if(view==="comeback")  return renderComeback();
+  if(view==="session")   return renderSession();
+  if(view==="settings")  return renderSettings();
+  if(view==="history")   return renderHistory();
+  if(view==="onboard")   return renderOnboard();
+  if(view==="photos")    return renderPhotos();
+  renderHome();
+}
+
+/* ---------------- ホーム ---------------- */
+function renderHome(){
+  const d = daysSince();
+  const w = S.weekly;
+  const doneToday = S.lastSessionDate === todayStr();
+  const promise = S.promise ? esc(S.promise) : "";
+
+  let statusLine;
+  if(!S.sessions.length)      statusLine = "まだ1回もやっていません。";
+  else if(d===0)              statusLine = "今日はもう終わっています。";
+  else if(d===1)              statusLine = "最後にやったのは昨日。";
+  else                        statusLine = "最後にやったのは "+d+" 日前。";
+
+  let html = "";
+
+  if(!STORAGE_OK){
+    html += `<div class="note note-rose" style="margin-bottom:12px">
+      <b>この環境では記録が保存されません。</b><br>
+      ページを閉じると消えます。保存を効かせるには、ファイルを直接ブラウザで開いてください。
+    </div>`;
+  }
+
+  // 賭けの自動停止のお知らせ（復帰画面とは別のタイミングで出す）
+  if(S.pendingWagerStop){
+    html += `
+    <div class="note note-rose" style="margin-bottom:12px">
+      <b>「今週の宣言」を止めました。</b><br>
+      3週続けて引かれています。この方法は、いまのあなたには効いていません。一度やめましょう。
+      <div style="margin-top:10px"><button class="btn btn-plain" onclick="dismissWagerStop()">わかった</button></div>
+    </div>`;
+  }
+
+  html += `<div class="seclabel">ホーム</div>
+  <div class="card">
+    <div class="h1">${doneToday? "今日はおしまい" : "今日、やる？"}</div>
+    <p class="sub">${statusLine}</p>
+    ${promise? `<div class="note note-gray" style="margin-top:12px">あなたが決めたこと<br><b style="color:var(--txt);font-size:14px">${promise}</b></div>`:""}
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" onclick="startSession()">${doneToday? "もう一度やる" : "はじめる"}</button>
+      <div class="tiny" style="margin-top:12px">音を使わずに自分でやった日は、1タップで記録できます</div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn btn-plain" onclick="quickRecord('full')">やった</button>
+        <button class="btn btn-plain" onclick="quickRecord('partial')">少しだけやった</button>
+      </div>
+      ${!LEGACY ? "" : (POD.ready()? `<div class="tiny center" style="margin-top:8px">▶ ${esc(S.audio.title||"音声")} の続きが再生されます</div>`
+                   : `<div class="tiny center" style="margin-top:8px">音声はまだ設定されていません</div>`)}
+    </div>
+  </div>`;
+
+  // 今日のメニュー（最初の4問の答えから自動で組む）…何をするアプリかが最初に分かるよう、一番上のカードのすぐ下に置く
+  const p = S.profile, m = buildMenu(p);
+  html += `<div class="seclabel">今日のメニュー（自動で作成・約${m.estMin}分）</div><div class="card tight">`;
+  m.items.forEach(it=>{
+    const l = lvOf(it.ex);
+    html += `<div class="kv"><span class="k">${it.name}</span><span class="v">${l.n} ${l.reps}<small>回 × ${it.sets}</small></span></div>`;
+  });
+  html += `<div class="tiny" style="margin-top:10px">
+      ${GOALS[p.goal].label}・${PLACES[p.place]}・${TIMES[p.minutes].label} の条件で組みました。日によって種目が入れ替わります。
+      ${p.place==="gym"?"<br>重さは「あと2〜3回できる」くらいが目安です。":""}
+      <br>「しんどかった」と答えるたびに、ここが軽くなります。</div>
+    <button class="btn btn-ghost" onclick="go('onboard')">条件を変える</button></div>`;
+
+  // 今週
+  const bar = [];
+  for(let i=0;i<Math.max(w.target, w.done);i++) bar.push(`<div class="dot ${i<w.done?"on":""}"></div>`);
+  html += `<div class="seclabel">今週</div>
+  <div class="card tight">
+    <div class="dots">${bar.join("")}</div>
+    <div class="kv"><span class="k">今週やった回数</span><span class="v">${w.done} <small>/ ${w.target}回</small></span></div>
+    <div class="kv"><span class="k">休んでいい日（休息権）</span><span class="v">${S.restBank} <small>日ぶん</small></span></div>
+    ${w.wager>0 && S.wagerEnabled
+      ? `<div class="kv"><span class="k">宣言</span><span class="v">${w.wager} <small>pt / 1回</small></span></div>`
+      : ""}
+    ${(()=>{ const wc=weekCompare(); return `<div class="kv"><span class="k">先週の同じ曜日まで</span><span class="v">${wc.last.days} <small>日</small></span></div>`; })()}
+    <div class="tiny" style="margin-top:10px">目標に届かなくても、まず休息権から使われます。記録は減りません。</div>
+  </div>`;
+
+  // 明日どうする（毎日の1タップ）
+  const tm = S.tomorrow;
+  const answeredToday = tm && tm.date === todayStr();
+  html += `<div class="seclabel">毎日の1タップ</div>
+  <div class="card tight">
+    ${answeredToday
+      ? `<div class="h2">明日は「${tm.ans==="do"?"やる":"休む"}」ですね</div>
+         <p class="tiny">${tm.ans==="do"?"待っています。":"休むのも予定のうちです。"}</p>
+         <button class="btn btn-ghost" onclick="S.tomorrow=null;save();render()">変える</button>`
+      : `<div class="h2">明日、やる？</div>
+         <p class="tiny">「休む」も正解です。決めておくだけで、実行率が上がります。</p>
+         <div class="row" style="margin-top:10px">
+           <button class="btn btn-blue" onclick="setTomorrow('do')">やる</button>
+           <button class="btn btn-plain" onclick="setTomorrow('rest')">休む</button>
+         </div>`}
+  </div>`;
+
+  // 累積（絶対に減らない）
+  html += `<div class="seclabel">これまで（絶対に減りません）</div>
+  <div class="card tight">
+    <div class="kv"><span class="k">合計</span><span class="v">${totalReps().toLocaleString()} <small>回</small></span></div>
+    <div class="kv"><span class="k">合計時間（目安）</span><span class="v">${fmtDur(totalSec())}</span></div>
+    <div class="kv"><span class="k">やった日</span><span class="v">${uniqueDays()} <small>日</small></span></div>
+    ${LEGACY? `<div class="kv"><span class="k">ポイント</span><span class="v">${S.points.toLocaleString()} <small>pt</small></span></div>`:""}
+  </div>`;
+
+  // 今月の振り返り（比べるのは「先月の同じ日までの自分」だけ）
+  const mr = monthReview(), diff = mr.cur.days - mr.lastSame.days;
+  let cmp;
+  if(!mr.cur.days && !mr.lastSame.days) cmp = `今月も先月の同じ時期も、まだ記録はありません。`;
+  else if(diff > 0)   cmp = `${mr.last.label}の同じ時期より <b style="color:var(--mint-txt)">${diff}日多い</b> です。`;
+  else if(diff === 0) cmp = `${mr.last.label}の同じ時期と同じペースです。`;
+  else                cmp = `${mr.last.label}の同じ時期は ${mr.lastSame.days}日でした。`;
+  html += `<div class="seclabel">今月の振り返り（${mr.cur.label}）</div>
+  <div class="card tight">
+    <div class="kv"><span class="k">やった日</span><span class="v">${mr.cur.days} <small>日</small></span></div>
+    <div class="kv"><span class="k">回数</span><span class="v">${mr.cur.reps.toLocaleString()} <small>回</small></span></div>
+    <div class="kv"><span class="k">時間（目安）</span><span class="v">${fmtDur(mr.cur.sec)}</span></div>
+    <div class="note note-gray mt8"><span style="color:var(--txt)">${cmp}</span><br>比べるのは、先月の同じ日までのあなただけです。</div>
+  </div>`;
+
+  // 上達の記録（新しい順に2件）
+  const ms = S.milestones.slice(0,2);
+  html += `<div class="seclabel">上達の記録</div>
+  <div class="card tight">
+    ${ms.length
+      ? ms.map(milestoneRow).join("") + `<button class="btn btn-ghost" onclick="go('history')">すべて見る</button>`
+      : `<p class="tiny" style="margin:0">「よかった」が3回続くと、少し増やすか聞きます。増やして自己ベストを更新するたびに、ここに残ります。</p>`}
+  </div>`;
+
+  // 成長記録（写真は自分だけが見る）
+  const ph = S.photo, since = ph.last ? daysBetween(ph.last, todayStr()) : null;
+  const photoDue = ph.count===0 ? S.sessions.length>=1 : since>=30;
+  html += `<div class="seclabel">成長記録（自分だけが見る）</div>
+  <div class="card tight">
+    ${ph.count
+      ? `<div class="kv"><span class="k">最後に撮った日</span><span class="v">${since===0?"今日":since+" <small>日前</small>"}</span></div>
+         <div class="kv"><span class="k">写真</span><span class="v">${ph.count} <small>枚</small></span></div>`
+      : `<p class="tiny" style="margin:0">まだ写真はありません。月に1回、同じ角度で撮ると変化が見えてきます。</p>`}
+    ${photoDue? `<div class="note note-mint mt8">そろそろ今月の写真を撮りませんか？</div>`:""}
+    <button class="btn btn-plain mt8" onclick="go('photos')">成長記録を開く</button>
+  </div>`;
+
+  html += `<div style="margin-top:22px">
+    <div class="row">
+      <button class="btn btn-plain" onclick="go('history')">履歴</button>
+      <button class="btn btn-plain" onclick="go('settings')">設定</button>
+    </div>
+  </div>`;
+
+  app().innerHTML = html;
+}
+
+function setTomorrow(ans){ S.tomorrow={date:todayStr(),ans}; save(); render(); toast(ans==="do"?"明日、待っています":"了解。休むのも予定のうちです"); }
+function dismissWagerStop(){ S.pendingWagerStop=false; save(); render(); }
+function go(v){ view=v; window.scrollTo(0,0); render(); }
+
+/* ---------------- 最初の4問 ---------------- */
+let ob = null;   // 回答中の一時状態
+function renderOnboard(){
+  if(!ob) ob = Object.assign({goal:null, exp:null, place:null, minutes:null}, S.profile||{});
+  const q = (title, sub, key, opts, cols)=>`
+    <div class="seclabel">${title}</div>
+    <div class="card tight">
+      ${sub?`<p class="tiny" style="margin:0 0 10px">${sub}</p>`:""}
+      <div class="${cols===1 ? "grid1" : "grid"+(opts.length===2?2:3)}">
+        ${opts.map(([v,l])=>`<button class="chip ${String(ob[key])===String(v)?"on":""}" onclick="obSet('${key}','${v}')">${l}</button>`).join("")}
+      </div>
+    </div>`;
+  const ready = ob.goal && ob.exp && ob.place && ob.minutes;
+  app().innerHTML = `
+  <div class="seclabel">はじめに</div>
+  <div class="card">
+    <div class="h1">4つだけ教えてください</div>
+    <p class="sub">答えから、今日やるメニューをアプリが自動で組みます。あとからいつでも変えられます。</p>
+  </div>
+  ${q("① 目的", "", "goal", Object.entries(GOALS).map(([k,g])=>[k,g.label]), 1)}
+  ${q("② 筋トレの経験", "最初の回数や重さが変わります", "exp", Object.entries(EXPS).map(([k,e])=>[k,e.label]), 1)}
+  ${q("③ やる場所", "", "place", Object.entries(PLACES))}
+  ${q("④ 1回にかけられる時間", "", "minutes", Object.entries(TIMES).map(([k,t])=>[k,t.label]))}
+  <div style="margin-top:22px">
+    <button class="btn btn-primary" ${ready?"":"disabled style=\"opacity:.35\""} onclick="obSubmit()">この条件でメニューを作る</button>
+    ${S.profile?`<button class="btn btn-ghost" onclick="ob=null;go('home')">変えずにもどる</button>`:""}
+  </div>`;
+}
+function obSet(k,v){ ob[k] = (k==="minutes") ? Number(v) : v; render(); }
+function obSubmit(){
+  if(!(ob.goal && ob.exp && ob.place && ob.minutes)) return;
+  const expChanged = !S.profile || S.profile.exp !== ob.exp;
+  S.profile = {goal:ob.goal, exp:ob.exp, place:ob.place, minutes:ob.minutes};
+  if(expChanged) applyExperience(ob.exp);
+  ob = null; save();
+  view = isComeback() ? "comeback" : "home";
+  window.scrollTo(0,0); render();
+  toast("今日のメニューを作りました");
+}
+
+/* ---------------- 復帰画面 ---------------- */
+function renderComeback(){
+  const d = daysSince();
+  A.init(); A.resume();
+  setTimeout(()=>A.celebrate(), 220);
+  app().innerHTML = `
+  <div class="stage">
+    <div class="stage-body">
+      <div class="center">
+        <div style="font-size:44px">🎉</div>
+        <div class="h1" style="font-size:24px;margin-top:8px">おかえり。</div>
+        <p class="sub">${d}日ぶりです。よく戻ってきました。</p>
+      </div>
+      <div class="card" style="width:100%">
+        <div class="kv"><span class="k">これまでの合計</span><span class="v">${totalReps().toLocaleString()} <small>回</small></span></div>
+        <div class="kv"><span class="k">やった日</span><span class="v">${uniqueDays()} <small>日</small></span></div>
+        <div class="tiny" style="margin-top:10px">この数字は、何日空いても<b style="color:var(--txt)">絶対に減りません</b>。ゼロには戻っていません。</div>
+      </div>
+      <div class="note note-mint" style="width:100%">
+        今日は<b>いちばん軽いところ</b>から始めます。<br>
+        少しだけでも、今日は勝ちです。
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="acceptComeback()">はじめる</button>
+      <button class="btn btn-ghost" onclick="acceptComebackLater()">あとで</button>
+    </div>
+  </div>`;
+}
+function resetLevelsToEasiest(){ EXERCISES.forEach(e=>{ S.levels[e.id]=0; S.goodStreak[e.id]=0; }); }
+function acceptComeback(){ resetLevelsToEasiest(); save(); startSession({short:true}); }
+function acceptComebackLater(){ resetLevelsToEasiest(); save(); go("home"); }
+
+/* ---------------- セッション ---------------- */
+function buildPlan(opt){
+  const m = buildMenu(S.profile, opt);
+  const plan=[];
+  m.items.forEach(it=>{
+    for(let i=0;i<it.sets;i++) plan.push({ex:it.ex, name:it.name, setNo:i+1});
+  });
+  return {plan, rest:m.rest};
+}
+function startSession(opt){
+  A.init(); A.resume();
+  POD.start();
+  const b = buildPlan(opt);   // 復帰のときは {short:true} で一番短いメニューにする
+  sess = { plan:b.plan, rest:b.rest, idx:0, phase:"ready", results:[], startedAt:Date.now(), offer:null,
+           comeback: !!(opt&&opt.short) || isComeback(), gapDays: daysSince() };
+  go("session");
+}
+function renderSession(){
+  if(!sess) return go("home");
+  if(sess.phase==="ready")  return renderReady();
+  if(sess.phase==="work")   return renderWork();
+  if(sess.phase==="mood")   return renderMood();
+  if(sess.phase==="rest")   return renderRest();
+  if(sess.phase==="done")   return renderDone();
+}
+
+function curItem(){ return sess.plan[sess.idx]; }
+
+function renderReady(){
+  const it = curItem();
+  const l = lvOf(it.ex);
+  const total = sess.plan.length;
+  const dots = sess.plan.map((_,i)=>`<div class="dot ${i<sess.idx?"on":""}"></div>`).join("");
+  app().innerHTML = `
+  <div class="stage">
+    <div class="dots">${dots}</div>
+    <div class="stage-body">
+      <div class="center">
+        <p class="sub">${sess.idx+1} / ${total} セット目</p>
+        <div class="h1" style="font-size:26px;margin-top:4px">${l.n}</div>
+        <div style="font-size:40px;font-weight:700;margin-top:6px">${l.reps}<span style="font-size:18px;color:var(--dim)"> 回</span></div>
+      </div>
+      <div class="note note-gray" style="width:100%">
+        音に合わせて動かします。<br>
+        <b style="color:var(--txt)">低い音＝下ろす／高い音＝上げきった</b>。<br>
+        最後の1回で、音がぴたっと収まります。
+      </div>
+      <div class="note note-mint" style="width:100%">きつくなったら、いつでも止めていいです。止めた回数もちゃんと記録されます。</div>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="beginWork()">はじめる</button>
+      <button class="btn btn-ghost" onclick="quitSession()">今日はここまでにする</button>
+    </div>
+  </div>`;
+}
+
+let workTimer=null;
+function beginWork(){
+  const it=curItem(), l=lvOf(it.ex);
+  A.init(); A.resume(); POD.duck(true);
+  sess.work = { target:l.reps, done:0, t0:Date.now(), lastTick:-1, lastNote:-1, T:tempoFor(it.ex) };
+  sess.phase="work";
+  render();
+  clearInterval(workTimer);
+  workTimer = setInterval(tickWork, 60);
+}
+function tickWork(){
+  if(!sess || sess.phase!=="work"){ clearInterval(workTimer); return; }
+  const w = sess.work, T = w.T || S.tempoMs;
+  const el = Date.now()-w.t0;
+  const repIdx = Math.floor(el/T);          // 0-based：いま何レップ目の最中か
+
+  // 下ろす合図（各レップの頭）
+  if(repIdx > w.lastTick && repIdx < w.target){ w.lastTick=repIdx; A.tick(); }
+  // 上げきった（各レップの終わり）
+  const noteIdx = Math.floor(el/T);
+  if(noteIdx > w.lastNote && noteIdx>0){
+    w.lastNote = noteIdx;
+    w.done = Math.min(noteIdx, w.target);
+    A.rep(w.done, w.target);
+    paintWork(true);
+    if(w.done >= w.target){
+      clearInterval(workTimer);
+      setTimeout(()=>{ POD.duck(false); sess.phase="mood"; render(); }, 1100);
+      return;
+    }
+  }
+  paintWork(false);
+}
+function paintWork(bump){
+  const w=sess.work; if(!w) return;
+  const el=Date.now()-w.t0, T=w.T||S.tempoMs;
+  const inRep=(el%T)/T;                       // 0→1
+  const down = inRep < 0.5;
+  const num=document.getElementById("repnum");
+  const ph=document.getElementById("phase");
+  const fg=document.getElementById("ringfg");
+  const box=document.getElementById("ringbox");
+  if(num) num.textContent = w.done;
+  if(ph){ ph.textContent = down? "おろす" : "あげる"; ph.className = "phase "+(down?"down":"up"); }
+  if(fg){
+    const C=2*Math.PI*106;
+    const prog = Math.min(1, (w.done + (w.done<w.target? inRep:0))/w.target);
+    fg.style.strokeDasharray=C; fg.style.strokeDashoffset=C*(1-prog);
+  }
+  if(box && bump){ box.classList.add("big"); setTimeout(()=>box.classList.remove("big"),240); }
+}
+function renderWork(){
+  const it=curItem(), l=lvOf(it.ex);
+  app().innerHTML = `
+  <div class="stage">
+    <div class="stage-body">
+      <p class="sub center">${l.n}</p>
+      <div class="ring-wrap pulse" id="ringbox">
+        <svg viewBox="0 0 236 236">
+          <circle class="ring-bg" cx="118" cy="118" r="106"></circle>
+          <circle class="ring-fg" id="ringfg" cx="118" cy="118" r="106"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="repnum" id="repnum">0</div>
+          <div class="reptot">/ ${l.reps} 回</div>
+        </div>
+      </div>
+      <div class="phase" id="phase">おろす</div>
+    </div>
+    <div>
+      <button class="btn btn-plain" onclick="stopEarly()">ここでやめる</button>
+    </div>
+  </div>`;
+  paintWork(false);
+}
+function stopEarly(){
+  clearInterval(workTimer); POD.duck(false);
+  sess.phase="mood"; render();
+}
+
+function renderMood(){
+  const it=curItem(), l=lvOf(it.ex), w=sess.work;
+  app().innerHTML = `
+  <div class="stage">
+    <div class="stage-body">
+      <div class="center">
+        <p class="sub">${l.n}</p>
+        <div class="h1" style="font-size:22px">${w.done} 回やりました</div>
+        ${w.done<w.target? `<p class="tiny">目標は${w.target}回でしたが、やった${w.done}回はちゃんと記録されます。</p>`:""}
+      </div>
+      <div class="h2 center" style="margin-top:6px">今の、どうだった？</div>
+      <div class="grid2" style="width:100%">
+        <button class="moodbtn good" onclick="answerMood('good')">
+          <div class="em">🙂</div><div class="lb">よかった</div><div class="ds">このまま</div>
+        </button>
+        <button class="moodbtn hard" onclick="answerMood('hard')">
+          <div class="em">😣</div><div class="lb">しんどかった</div><div class="ds">次から軽くなります</div>
+        </button>
+      </div>
+      <div class="tiny center">正直に答えるほど、あなたに合っていきます。</div>
+    </div>
+  </div>`;
+}
+function answerMood(mood){
+  const it=curItem(), w=sess.work;
+  sess.results.push({ex:it.ex, name:it.name, reps:w.done, target:w.target, mood});
+
+  if(mood==="hard"){
+    if(S.levels[it.ex]>0){ S.levels[it.ex]--; toast("次から軽くします"); }
+    else toast("これがいちばん軽い設定です");
+    S.goodStreak[it.ex]=0;
+  }else{
+    S.goodStreak[it.ex]++;
+    if(S.goodStreak[it.ex]>=3 && S.levels[it.ex] < EXERCISES.find(e=>e.id===it.ex).levels.length-1){
+      sess.offer = it.ex;   // 完了画面で「増やしますか？」と聞く（勝手には上げない）
+    }
+  }
+  save();
+  sess.idx++;
+  if(sess.idx >= sess.plan.length){ finishSession(); return; }
+  sess.phase="rest"; sess.restLeft=sess.rest||60; render();
+}
+
+let restTimer=null;
+function renderRest(){
+  const it=curItem(), l=lvOf(it.ex);
+  // 「さっきのセット」＝いま終えたもの（次の種目ではない）
+  const just = sess.results[sess.results.length-1];
+  const prev = just ? lastSessionFor(just.ex) : null;
+  const prevTxt = prev ? prev.map(x=>x.reps).join(" / ")+" 回" : "—";
+  const todayTxt = just ? sess.results.filter(r=>r.ex===just.ex).map(r=>r.reps).join(" / ")+" 回" : "—";
+  app().innerHTML = `
+  <div class="stage">
+    <div class="stage-body">
+      <p class="sub">休憩</p>
+      <div class="timerbig" id="restnum">${sess.restLeft}</div>
+      <div class="tiny">秒</div>
+      <div class="card" style="width:100%">
+        <div class="h2">さっきのセット：${just? just.name : "—"}</div>
+        <div class="kv"><span class="k">今日ここまで</span><span class="v">${todayTxt}</span></div>
+        <div class="kv"><span class="k">前回この種目</span><span class="v">${prevTxt}</span></div>
+        <div class="kv"><span class="k">今週</span><span class="v">${S.weekly.done} <small>/ ${S.weekly.target}回</small></span></div>
+      </div>
+      <div class="card sunken" style="width:100%">
+        <div class="tiny">次は</div>
+        <div class="h2" style="margin:2px 0 0">${l.n} ${l.reps}回</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="endRest()">次へ</button>
+    </div>
+  </div>`;
+  clearInterval(restTimer);
+  restTimer=setInterval(()=>{
+    if(!sess||sess.phase!=="rest"){ clearInterval(restTimer); return; }
+    sess.restLeft--;
+    const n=document.getElementById("restnum");
+    if(n) n.textContent=Math.max(0,sess.restLeft);
+    if(sess.restLeft<=0){ clearInterval(restTimer); endRest(); }
+  },1000);
+}
+function endRest(){ clearInterval(restTimer); sess.phase="ready"; render(); }
+
+function quitSession(){
+  clearInterval(workTimer); clearInterval(restTimer);
+  if(sess.results.length){ finishSession(); return; }
+  POD.stop(); sess=null; go("home");
+}
+
+function finishSession(){
+  clearInterval(workTimer); clearInterval(restTimer);
+  POD.stop();
+  const reps = sess.results.reduce((a,r)=>a+r.reps,0);
+  const isFirstToday = S.lastSessionDate !== todayStr();
+  // mode: guided=音に合わせてやった（記録方法①） / full・partial=1タップで記録（記録方法②）
+  // 時間：①は始めてから終わるまで（上限90分）、②はメニューからの目安
+  const sec = sess.quick ? (sess.estSec||0) : Math.min(5400, Math.round((Date.now()-sess.startedAt)/1000));
+  S.sessions.unshift({ date: todayStr(), sets: sess.results, totalReps: reps, mode: sess.quick||"guided", sec, secEstimated: !!sess.quick });
+  S.sessions = S.sessions.slice(0,200);
+  S.lastSessionDate = todayStr();
+  if(isFirstToday){
+    S.weekly.done++;
+    S.restBank = Math.min(REST_BANK_CAP, S.restBank+1);
+  }
+  save();
+  sess.phase="done"; sess.gainedReps=reps; sess.firstToday=isFirstToday;
+  A.celebrate();
+  render();
+}
+function renderDone(){
+  const offerEx = sess.offer ? EXERCISES.find(e=>e.id===sess.offer) : null;
+  app().innerHTML = `
+  <div class="stage">
+    <div class="stage-body">
+      <div class="center">
+        <div style="font-size:38px">✓</div>
+        <div class="h1" style="font-size:22px;margin-top:6px">おつかれさま</div>
+        <p class="sub">${sess.gainedReps} 回やりました</p>
+        ${sess.quick==="partial"? `<p class="tiny">「少しだけやった」は、各種目1セット分として記録しています（目安）。</p>`:""}
+        ${sess.quick? `<button class="btn btn-ghost" onclick="undoQuick()">記録を取り消す（押しまちがえたとき）</button>`:""}
+      </div>
+      <div class="card" style="width:100%">
+        ${groupResults(sess.results).map(g=>`<div class="kv"><span class="k">${g.name}</span><span class="v">${g.total} <small>回${g.reps.length>1?`（${g.reps.join("＋")}）`:""}</small></span></div>`).join("")}
+      </div>
+      <div class="card sunken" style="width:100%">
+        <div class="kv"><span class="k">これまでの合計</span><span class="v">${totalReps().toLocaleString()} <small>回</small></span></div>
+        <div class="kv"><span class="k">今週</span><span class="v">${S.weekly.done} <small>/ ${S.weekly.target}回</small></span></div>
+        <div class="kv"><span class="k">休んでいい日</span><span class="v">${S.restBank} <small>日ぶん</small></span></div>
+      </div>
+      ${offerEx? `
+      <div class="note note-mint" style="width:100%">
+        <b>${offerEx.name}、3回続けて「よかった」でした。</b><br>
+        少し増やしますか？（増やさなくても大丈夫です）
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-mint" onclick="acceptOffer()">増やす</button>
+          <button class="btn btn-plain" onclick="declineOffer()">このまま</button>
+        </div>
+      </div>`:""}
+      <div class="card" style="width:100%">
+        <div class="h2">友達に送る（任意）</div>
+        <p class="tiny">送れるのは、やった日の内容だけです。サボった日が友達に伝わることはありません。</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-mint" onclick="shareLine(doneMessage(),'done')">LINEで送る</button>
+          <button class="btn btn-plain" onclick="shareOther(doneMessage(),'done')">ほかの方法で送る</button>
+        </div>
+      </div>
+      ${(sess.quick || !LEGACY)? "" : `<div class="tiny center">音声はここで止まります。次に体を動かすときに、続きから再生されます。</div>`}
+    </div>
+    <div><button class="btn btn-primary" onclick="POD.stop();sess=null;go('home')">ホームへ</button></div>
+  </div>`;
+}
+function acceptOffer(){
+  const id=sess.offer, ex=EXERCISES.find(e=>e.id===id);
+  const before = S.levels[id];
+  if(S.levels[id] < ex.levels.length-1) S.levels[id]++;
+  const after = S.levels[id];
+  let msg = "次から少しだけ増えます";
+  // これまでで一番上の段階に上がったときだけ「上達」として残す（復帰後に戻っていく途中は数えない）
+  if(after > before && after > (S.best[id]??-1)){
+    const a = ex.levels[before], b = ex.levels[after];
+    S.milestones.unshift({ date:todayStr(), ex:id, name:ex.name, from:`${a.n} ${a.reps}回`, to:`${b.n} ${b.reps}回`, newMove:a.n!==b.n });
+    S.milestones = S.milestones.slice(0,100);
+    S.best[id] = after;
+    msg = (a.n!==b.n) ? `上達を記録しました：${b.n}に進みました` : "上達を記録しました。次から少しだけ増えます";
+  }
+  S.goodStreak[id]=0; sess.offer=null; save(); render(); toast(msg);
+}
+function declineOffer(){ S.goodStreak[sess.offer]=0; sess.offer=null; save(); render(); toast("このままいきます"); }
+
+/* ---------------- 記録方法②：1タップで記録 ----------------
+   音に合わせずに自分でやった日用。やった＝今日のメニューどおり、少しだけ＝各種目1セット分（目安） */
+function quickRecord(kind){
+  const m = buildMenu(S.profile);
+  const results = [];
+  m.items.forEach(it=>{
+    const l = lvOf(it.ex), n = (kind==="full") ? it.sets : 1;
+    for(let i=0;i<n;i++) results.push({ex:it.ex, name:it.name, reps:l.reps, target:l.reps, mood:null});
+  });
+  const estSec = Math.round(results.reduce((a,r)=>a + r.reps*tempoFor(r.ex)/1000 + 15, 0) + Math.max(0, results.length-1)*m.rest);
+  sess = { plan:[], rest:m.rest, idx:0, phase:"done", results, offer:null, quick:kind, estSec,
+           undo:{ weekly:S.weekly.done, restBank:S.restBank, last:S.lastSessionDate },   // 取り消し用
+           comeback:isComeback(), gapDays:daysSince() };
+  view = "session";
+  finishSession();
+}
+
+// 押しまちがえた1タップ記録を、記録する前の状態に戻す
+function undoQuick(){
+  if(!sess || !sess.quick || !sess.undo) return;
+  S.sessions.shift();
+  S.weekly.done = sess.undo.weekly; S.restBank = sess.undo.restBank; S.lastSessionDate = sess.undo.last;
+  save(); sess = null; go("home"); toast("記録を取り消しました");
+}
+// 完了画面で、同じ種目のセットを1行にまとめる
+function groupResults(results){
+  const out = [];
+  results.forEach(r=>{
+    const g = out.find(x=>x.ex===r.ex);
+    if(g){ g.total += r.reps; g.reps.push(r.reps); }
+    else out.push({ ex:r.ex, name:r.name, total:r.reps, reps:[r.reps] });
+  });
+  return out;
+}
+
+/* ---------------- 友達に送る（サーバーなし：LINEや共有メニューで送る） ----------------
+   送るのは「やった日」「戻ってきた日」の内容だけ。サボった日を知らせる文章は作らない。
+   共有が続ける助けになるかを後で確かめるため、送った回数だけ記録しておく。 */
+function doneMessage(){
+  const names = [...new Set(sess.results.map(r=>r.name))].join("・");
+  const head = (sess.comeback && sess.gapDays>=COMEBACK_DAYS)
+    ? `${sess.gapDays}日ぶりに筋トレを再開した！`
+    : "今日も筋トレした💪";
+  return `${head}\n${names}（${sess.gainedReps}回）\nこれまで合計${totalReps().toLocaleString()}回`;
+}
+function logShare(kind, via){
+  S.shares = (S.shares||[]).concat({date:todayStr(), kind, via}).slice(-200);
+  save();
+}
+function shareLine(text, kind){
+  window.open("https://line.me/R/share?text="+encodeURIComponent(text), "_blank");
+  logShare(kind, "line");
+}
+function shareOther(text, kind){
+  if(navigator.share){
+    navigator.share({text}).then(()=>logShare(kind,"share")).catch(()=>{});
+  }else if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(()=>{ toast("文章をコピーしました。好きなアプリに貼って送れます"); logShare(kind,"copy"); });
+  }
+}
+
+/* ---------------- 成長記録（写真は自分だけが見る） ----------------
+   写真はこの端末のブラウザ内（IndexedDB）にだけ保存する。サーバーには送らない。
+   他の人の写真を見る一覧は作らない。友達に送るのは、本人が選んだ写真だけ。 */
+const PDB = {
+  db:null,
+  open(){
+    return new Promise((res,rej)=>{
+      if(this.db) return res(this.db);
+      let r; try{ r = indexedDB.open("kintore_photos",1); }catch(e){ return rej(e); }
+      r.onupgradeneeded = ()=>r.result.createObjectStore("photos",{keyPath:"id"});
+      r.onsuccess = ()=>{ this.db=r.result; res(this.db); };
+      r.onerror = ()=>rej(r.error);
+    });
+  },
+  async all(){ const db=await this.open(); return new Promise((res,rej)=>{
+    const q=db.transaction("photos").objectStore("photos").getAll();
+    q.onsuccess=()=>res(q.result.sort((a,b)=>b.ts-a.ts)); q.onerror=()=>rej(q.error); }); },
+  async put(p){ const db=await this.open(); return new Promise((res,rej)=>{
+    const t=db.transaction("photos","readwrite"); t.objectStore("photos").put(p);
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+  async del(id){ const db=await this.open(); return new Promise((res,rej)=>{
+    const t=db.transaction("photos","readwrite"); t.objectStore("photos").delete(id);
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+};
+// 容量を抑えるため、長い辺1000pxのJPEGに縮めて保存する
+function shrinkImage(file, max){
+  return new Promise((res,rej)=>{
+    const u = URL.createObjectURL(file), img = new Image();
+    img.onload = ()=>{
+      const r = Math.min(1, max/Math.max(img.width,img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width*r); c.height = Math.round(img.height*r);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u);
+      c.toBlob(b=> b? res(b) : rej(new Error("toBlob")), "image/jpeg", 0.85);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(u); rej(new Error("画像を読み込めませんでした")); };
+    img.src = u;
+  });
+}
+const POSES = { front:"正面", side:"横" };
+let photoState = { pose:"front", urls:[], list:[] };
+function effortBetween(from, to){   // from より後、to まで（from=null なら最初から）
+  const ss = S.sessions.filter(s=>(!from || s.date>from) && s.date<=to);
+  return { days: uniqueDays(ss), reps: ss.reduce((a,s)=>a+s.totalReps,0), sec: ss.reduce((a,s)=>a+sessSec(s),0), ms: milestonesBetween(from,to) };
+}
+async function renderPhotos(){
+  photoState.urls.forEach(u=>URL.revokeObjectURL(u)); photoState.urls=[];
+  const pose = photoState.pose;
+  app().innerHTML = `
+  <div class="seclabel">成長記録</div>
+  <div class="card">
+    <div class="h1">自分だけが見る記録</div>
+    <p class="sub">写真はこの端末の中だけに保存されます。友達に送るのは、あなたが「送る」を押した写真だけです。</p>
+  </div>
+  <div class="seclabel">撮る向き</div>
+  <div class="card tight"><div class="grid2">
+    ${Object.entries(POSES).map(([k,l])=>`<button class="chip ${pose===k?"on":""}" onclick="photoState.pose='${k}';renderPhotos()">${l}</button>`).join("")}
+  </div></div>
+  <div id="photoBody"><div class="card tight"><p class="tiny" style="margin:0">読み込み中…</p></div></div>
+  <div style="margin-top:22px"><button class="btn btn-primary" onclick="go('home')">ホームへ</button></div>`;
+
+  let list;
+  try{ list = await PDB.all(); }
+  catch(e){
+    const b=document.getElementById("photoBody");
+    if(b) b.innerHTML = `<div class="note note-rose"><b>この環境では写真を保存できません。</b><br>ファイルを直接ブラウザで開くか、スマホのブラウザで開いてください。</div>`;
+    return;
+  }
+  if(view!=="photos") return;
+  photoState.list = list;
+  const mine = list.filter(p=>p.pose===pose);           // 新しい順
+  const url = b=>{ const u=URL.createObjectURL(b); photoState.urls.push(u); return u; };
+  const img = (p,h)=>`<img src="${url(p.blob)}" alt="" style="width:100%;height:${h}px;object-fit:contain;background:var(--sunken);border-radius:10px;display:block">`;
+  let html = "";
+
+  // 撮り方のガイド（前回と同じ角度で撮る）
+  html += `<div class="seclabel">撮り方（毎回そろえると変化が分かります）</div>
+  <div class="card tight">
+    <p class="tiny" style="margin:0">・同じ場所・同じ明るさで（例：朝起きてすぐ、同じ鏡の前）<br>
+    ・全身が入る同じ距離で、${POSES[pose]}から<br>・月に1回くらいで十分です</p>
+    ${mine[0]? `<div class="mt12"><div class="tiny">前回（${mine[0].date}）と同じ角度で撮りましょう</div><div class="mt8" style="width:40%">${img(mine[0],120)}</div></div>`:""}
+    <label class="btn btn-mint mt12">写真を撮る・選ぶ
+      <input type="file" accept="image/*" onchange="addPhoto(event)" style="display:none">
+    </label>
+  </div>`;
+
+  // 最初と最新を並べて見比べる
+  if(mine.length>=2){
+    const first = mine[mine.length-1], last = mine[0], e = effortBetween(first.date, last.date);
+    const days = daysBetween(first.date, last.date);
+    html += `<div class="seclabel">見比べる（${POSES[pose]}）</div>
+    <div class="card tight">
+      <div class="grid2">
+        <div>${img(first,220)}<div class="tiny center mt8">はじめ ${first.date}</div></div>
+        <div>${img(last,220)}<div class="tiny center mt8">いま ${last.date}</div></div>
+      </div>
+      <div class="note note-mint mt12">この${days}日間で、<b>${e.days}日・合計${e.reps.toLocaleString()}回・${fmtDur(e.sec)}</b>やりました（時間は目安）。
+        ${e.ms.length? `<br>この間の上達：${e.ms.slice().reverse().map(x=>`${x.name} ${x.from} → ${x.to}`).join("、")}` : ""}</div>
+    </div>`;
+  }
+
+  // 一覧
+  html += `<div class="seclabel">これまでの写真（${POSES[pose]}・${mine.length}枚）</div>`;
+  if(!mine.length){
+    html += `<div class="card tight"><p class="tiny" style="margin:0">まだありません。1枚目が「はじめ」の記録になります。</p></div>`;
+  }else{
+    mine.forEach((p,i)=>{
+      const prev = mine[i+1], e = effortBetween(prev? prev.date : null, p.date);
+      html += `<div class="card tight">
+        ${img(p,260)}
+        <div class="kv mt8"><span class="k">${p.date}</span><span class="v" style="font-size:13px">${prev? `前の写真から ${e.days}日・${e.reps.toLocaleString()}回・${fmtDur(e.sec)}` : "はじめの1枚"}</span></div>
+        <div class="row mt8">
+          <button class="btn btn-plain" onclick="sharePhoto('${p.id}')">友達に送る</button>
+          <button class="btn btn-ghost" onclick="delPhoto('${p.id}')">削除</button>
+        </div>
+      </div>`;
+    });
+  }
+  const b = document.getElementById("photoBody");
+  if(b) b.innerHTML = html;
+}
+async function addPhoto(ev){
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if(!f) return;
+  try{
+    const blob = await shrinkImage(f, 1000);
+    const id = Date.now()+"_"+Math.random().toString(36).slice(2,7);
+    await PDB.put({id, ts:Date.now(), date:todayStr(), pose:photoState.pose, blob});
+    S.photo.last = todayStr(); S.photo.count++; save();
+    toast("保存しました（この端末の中だけ）");
+    renderPhotos();
+  }catch(e){ toast("保存できませんでした"); }
+}
+async function delPhoto(id){
+  if(!confirm("この写真を削除します。元に戻せません。よろしいですか？")) return;
+  await PDB.del(id);
+  const rest = (await PDB.all());
+  S.photo.count = rest.length; S.photo.last = rest.length ? rest.map(p=>p.date).sort().pop() : null; save();
+  renderPhotos();
+}
+async function sharePhoto(id){
+  const p = photoState.list.find(x=>x.id===id); if(!p) return;
+  const file = new File([p.blob], `kintore_${p.date}.jpg`, {type:"image/jpeg"});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], text:"筋トレの記録"}); logShare("photo","share"); }catch(e){}
+  }else{
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    toast("写真を保存しました。LINEなどで友達に送れます");
+    logShare("photo","download");
+  }
+}
+
+/* ---------------- 設定 ---------------- */
+function renderSettings(){
+  const w=S.weekly;
+  const wagers=[0,100,300,500];
+  app().innerHTML = `
+  <div class="seclabel">設定</div>
+  <div class="card tight">
+    <div class="h2">メニューの条件</div>
+    <p class="tiny">${S.profile ? `${GOALS[S.profile.goal].label}・${EXPS[S.profile.exp].label}・${PLACES[S.profile.place]}・${TIMES[S.profile.minutes].label}` : "未設定"}</p>
+    <button class="btn btn-plain mt8" onclick="go('onboard')">条件を変える</button>
+  </div>
+
+  <div class="card">
+    <div class="h2">自分との約束</div>
+    <p class="tiny">「いつ・どこで」を自分の言葉で書くと、実行率が上がります。アプリが書いた文章より、自分で書いた文のほうが効きます。</p>
+    <div class="field" style="margin-top:10px">
+      <input type="text" id="fPromise" placeholder="例：火曜19時。バイトの後、部屋で。" value="${esc(S.promise)}">
+    </div>
+    <button class="btn btn-plain mt8" onclick="savePromise()">保存する</button>
+  </div>
+
+  ${LEGACY ? `<div class="seclabel">音声（トレーニング中だけ再生されます）</div>
+  <div class="card">
+    <p class="tiny">続きが気になるものを1つ選んでください。<b style="color:var(--txt)">トレーニング中しか再生されません。</b>これが「始める理由」になります。</p>
+    ${S.audio.url? `<div class="note note-mint" style="margin-top:10px">再生中の設定：<b>${esc(S.audio.title||"（無題）")}</b></div>`:""}
+
+    <div class="field" style="margin-top:14px">
+      <label class="fl">① ポッドキャストのRSS</label>
+      <input type="url" id="fRss" placeholder="https://.../feed.xml" value="${esc(S.audio.rss)}">
+      <button class="btn btn-blue mt8" onclick="loadRss()">最新の回を取り込む</button>
+      <div class="tiny mt8">※ ファイルを直接開いている（file://）場合、ここは動きません。②か③を使ってください。</div>
+    </div>
+
+    <div class="field">
+      <label class="fl">② 音声ファイルのURLを直接貼る</label>
+      <input type="url" id="fUrl" placeholder="https://.../episode.mp3">
+      <button class="btn btn-plain mt8" onclick="setUrl()">これにする</button>
+    </div>
+
+    <div class="field">
+      <label class="fl">③ この端末の音声ファイルを選ぶ</label>
+      <input type="file" id="fFile" accept="audio/*" onchange="pickFile(event)">
+    </div>
+  </div>
+
+  <div class="seclabel">今週の宣言（ポイント・お金は使いません）</div>
+  <div class="card">
+    <p class="tiny">自分で決めた回数に届かなかったとき、<b style="color:var(--txt)">まず休息権が使われます</b>。それでも足りない分だけ、ポイントが引かれます。精算は週が終わったあと、静かに行われます。</p>
+    ${!S.wagerEnabled? `<div class="note note-rose" style="margin-top:10px">3週続けて引かれたため、この機能は<b>アプリ側で止めています</b>。効いていない方法を続けても意味がないからです。
+      <div style="margin-top:10px"><button class="btn btn-plain" onclick="reenableWager()">それでも再開する</button></div></div>`:`
+    <div class="field" style="margin-top:12px">
+      <label class="fl">今週の目標（回）</label>
+      <div class="grid3">
+        ${[2,3,4].map(n=>`<button class="chip ${w.target===n?"on":""}" onclick="setTarget(${n})">週${n}回</button>`).join("")}
+      </div>
+    </div>
+    <div class="field">
+      <label class="fl">届かなかった1回あたり</label>
+      <div class="grid2">
+        ${wagers.map(v=>`<button class="chip ${w.wager===v?"on":""}" onclick="setWager(${v})">${v===0?"賭けない":v+" pt"}</button>`).join("")}
+      </div>
+    </div>
+    <div class="note note-gray mt12">
+      いま：週${w.target}回 / ${w.wager===0?"賭けなし":w.wager+"pt"}<br>
+      手持ち：${S.points.toLocaleString()} pt ・ 休息権 ${S.restBank} 日ぶん
+    </div>`}
+  </div>
+
+  ` : ""}
+
+  <div class="seclabel">動きの速さ</div>
+  <div class="card tight">
+    <div class="grid3">
+      ${[2000,2400,3000].map(t=>`<button class="chip ${S.tempoMs===t?"on":""}" onclick="setTempo(${t})">${(t/1000).toFixed(1)}秒/回</button>`).join("")}
+    </div>
+    <div class="tiny mt8">1回あたりにかける時間です。下ろす→上げるで1回。</div>
+  </div>
+
+  <div style="margin-top:22px">
+    <button class="btn btn-primary" onclick="go('home')">ホームへ</button>
+    <button class="btn btn-ghost" onclick="wipe()">データを全部消す</button>
+  </div>`;
+}
+function savePromise(){ S.promise=document.getElementById("fPromise").value.trim(); save(); toast("保存しました"); }
+function setTarget(n){ S.weekly.target=n; S.weekly.declared=true; save(); render(); }
+function setWager(v){ S.weekly.wager=v; S.weekly.declared=true; save(); render(); toast(v===0?"賭けなしにしました":"今週は1回あたり"+v+"ptです"); }
+function reenableWager(){ S.wagerEnabled=true; S.lossStreak=0; save(); render(); }
+function setTempo(t){ S.tempoMs=t; save(); render(); }
+function setUrl(){
+  const u=document.getElementById("fUrl").value.trim();
+  if(!u) return toast("URLを入れてください");
+  S.audio.url=u; S.audio.title=u.split("/").pop().slice(0,40); S.audio.pos=0; save(); render(); toast("設定しました");
+}
+function pickFile(e){
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  S.audio.url=URL.createObjectURL(f); S.audio.title=f.name; S.audio.pos=0; save(); render(); toast("この端末の音声を設定しました");
+}
+async function loadRss(){
+  const url=document.getElementById("fRss").value.trim();
+  if(!url) return toast("RSSのURLを入れてください");
+  toast("読み込んでいます…");
+  try{
+    const res=await fetch(url);
+    const txt=await res.text();
+    const doc=new DOMParser().parseFromString(txt,"text/xml");
+    const item=doc.querySelector("item");
+    if(!item) throw new Error("no item");
+    const enc=item.querySelector("enclosure");
+    const src=enc? enc.getAttribute("url") : null;
+    if(!src) throw new Error("no enclosure");
+    S.audio.rss=url; S.audio.url=src; S.audio.pos=0;
+    S.audio.title=(item.querySelector("title")?.textContent||"最新の回").trim().slice(0,50);
+    save(); render(); toast("最新の回を取り込みました");
+  }catch(err){
+    toast("読み込めませんでした（②か③を使ってください）");
+  }
+}
+function wipe(){
+  if(!confirm("記録・累積・ポイントを全部消します。元に戻せません。よろしいですか？")) return;
+  localStorage.removeItem(KEY); S=freshState(); save(); go("home");
+}
+
+/* ---------------- 履歴 ---------------- */
+function renderHistory(){
+  // 月ごとの記録（直近6ヶ月）と上達の記録
+  let html = `<div class="seclabel">月ごとの記録（時間は目安）</div><div class="card tight">`;
+  [0,-1,-2,-3,-4,-5].map(monthStats).forEach(mo=>{
+    html += `<div class="kv"><span class="k">${mo.label}</span><span class="v" style="font-size:13px;font-weight:600">${mo.days}日・${mo.reps.toLocaleString()}回・${fmtDur(mo.sec)}</span></div>`;
+  });
+  html += `</div><div class="seclabel">上達の記録</div><div class="card tight">`;
+  html += S.milestones.length ? S.milestones.map(milestoneRow).join("") : `<p class="tiny" style="margin:0">まだありません。</p>`;
+  html += `</div><div class="seclabel">履歴</div>`;
+  if(!S.sessions.length){
+    html+=`<div class="card"><p class="sub">まだ記録がありません。</p></div>`;
+  }else{
+    html+=`<div class="card tight">`;
+    S.sessions.slice(0,30).forEach(s=>{
+      const hard=s.sets.filter(x=>x.mood==="hard").length;
+      html+=`<div class="kv"><span class="k">${s.date}${s.mode&&s.mode!=="guided"?" ・1タップ":""}${hard?` <span style="color:var(--blue-txt)">・きつめ×${hard}</span>`:""}</span><span class="v">${s.totalReps} <small>回</small></span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(LEGACY){
+  html+=`<div class="seclabel">週の精算</div>`;
+  if(!S.ledger.length){
+    html+=`<div class="card"><p class="sub">まだ精算はありません。</p><p class="tiny">週が終わったあと、静かに処理されます。復帰したときに請求は出しません。</p></div>`;
+  }else{
+    html+=`<div class="card tight">`;
+    S.ledger.forEach(l=>{
+      let r;
+      if(l.charged>0)        r=`<span style="color:var(--rose-txt)">−${l.charged} pt</span>`;
+      else if(l.refunded>0)  r=`<span style="color:var(--mint-txt)">+${l.refunded} pt</span>`;
+      else if(l.usedBank>0)  r=`<span style="color:var(--dim)">休息権 ${l.usedBank}日</span>`;
+      else                   r=`<span style="color:var(--dim)">—</span>`;
+      html+=`<div class="kv"><span class="k">${l.week}の週 ・ ${l.done}/${l.target}回</span><span class="v" style="font-size:13px">${r}</span></div>`;
+    });
+    html+=`</div>
+    <div class="note note-gray mt12">お金（ポイント）は減っても、<b style="color:var(--txt)">合計回数とやった日数は絶対に減りません</b>。帳簿は分けてあります。</div>`;
+  }
+  }
+
+  html+=`<div style="margin-top:22px"><button class="btn btn-primary" onclick="go('home')">ホームへ</button></div>`;
+  app().innerHTML=html;
+}
+
+/* ==========================================================
+   5. 起動
+   ========================================================== */
+load();
+view = !S.profile ? "onboard" : (isComeback() ? "comeback" : "home");
+render();
+document.addEventListener("click", ()=>{ A.init(); A.resume(); }, {once:true});
+window.addEventListener("beforeunload", ()=>{ try{ POD.stop(); }catch(e){} });
+</script>
+</body>
+</html>
