@@ -305,6 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
+const APP_VERSION = "2026-09-19b";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -364,6 +365,8 @@ function load(){
   if(!S.best)   S.best = {};                          // 種目ごとに到達した一番上の段階（上達の記録用）
   EXERCISES.forEach(e=>{ if(S.best[e.id]==null) S.best[e.id]=S.levels[e.id]; });
   if(!S.milestones) S.milestones = [];                // 上達の記録 {date, ex, name, from, to, newMove}
+  if(!S.events) S.events = [];                        // 試用の検証用：開いた・復帰画面・明日やる？などの出来事
+  if(S.participant===undefined) S.participant = null; // 試用の参加者 {nick, joinedAt}
   settleWeeks();
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ STORAGE_OK=false; } }
@@ -689,12 +692,13 @@ function renderHome(){
       <button class="btn btn-plain" onclick="go('history')">履歴</button>
       <button class="btn btn-plain" onclick="go('settings')">設定</button>
     </div>
+    <button class="btn btn-ghost" onclick="go('settings')">試用中の方：記録を送る（設定の一番上）</button>
   </div>`;
 
   app().innerHTML = html;
 }
 
-function setTomorrow(ans){ S.tomorrow={date:todayStr(),ans}; save(); render(); toast(ans==="do"?"明日、待っています":"了解。休むのも予定のうちです"); }
+function setTomorrow(ans){ S.tomorrow={date:todayStr(),ans}; logEvent("tomorrow",{ans}); render(); toast(ans==="do"?"明日、待っています":"了解。休むのも予定のうちです"); }
 function dismissWagerStop(){ S.pendingWagerStop=false; save(); render(); }
 function go(v){ view=v; window.scrollTo(0,0); render(); }
 
@@ -732,7 +736,7 @@ function obSubmit(){
   const expChanged = !S.profile || S.profile.exp !== ob.exp;
   S.profile = {goal:ob.goal, exp:ob.exp, place:ob.place, minutes:ob.minutes};
   if(expChanged) applyExperience(ob.exp);
-  ob = null; save();
+  ob = null; logEvent("onboard", {profile:S.profile});
   view = isComeback() ? "comeback" : "home";
   window.scrollTo(0,0); render();
   toast("今日のメニューを作りました");
@@ -768,8 +772,8 @@ function renderComeback(){
   </div>`;
 }
 function resetLevelsToEasiest(){ EXERCISES.forEach(e=>{ S.levels[e.id]=0; S.goodStreak[e.id]=0; }); }
-function acceptComeback(){ resetLevelsToEasiest(); save(); startSession({short:true}); }
-function acceptComebackLater(){ resetLevelsToEasiest(); save(); go("home"); }
+function acceptComeback(){ resetLevelsToEasiest(); logEvent("comeback_start",{gap:daysSince()}); startSession({short:true}); }
+function acceptComebackLater(){ resetLevelsToEasiest(); logEvent("comeback_later",{gap:daysSince()}); go("home"); }
 
 /* ---------------- セッション ---------------- */
 function buildPlan(opt){
@@ -1098,7 +1102,7 @@ function undoQuick(){
   if(!sess || !sess.quick || !sess.undo) return;
   S.sessions.shift();
   S.weekly.done = sess.undo.weekly; S.restBank = sess.undo.restBank; S.lastSessionDate = sess.undo.last;
-  save(); sess = null; go("home"); toast("記録を取り消しました");
+  logEvent("undo_quick"); sess = null; go("home"); toast("記録を取り消しました");
 }
 // 完了画面で、同じ種目のセットを1行にまとめる
 function groupResults(results){
@@ -1291,11 +1295,76 @@ async function sharePhoto(id){
   }
 }
 
+/* ---------------- 試用の検証用：出来事の記録と「記録を送る」 ----------------
+   記録は端末の中にだけある。送るのは本人がボタンを押したときだけ。
+   写真そのものと「自分との約束」の文章は送らない。 */
+function nowStamp(){ const d=new Date(); return todayStr(d)+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function logEvent(type, data){
+  S.events = (S.events||[]).concat(Object.assign({t:nowStamp(), type}, data||{})).slice(-3000);
+  save();
+}
+function exportData(){
+  return {
+    format:"kintore-export", formatVersion:1, appVersion:APP_VERSION,
+    exportedAt:nowStamp(), today:todayStr(),
+    participant:S.participant, createdAt:S.createdAt, profile:S.profile,
+    sessions:S.sessions.map(s=>({ date:s.date, mode:s.mode||"guided", totalReps:s.totalReps,
+      sec:(s.sec!=null? s.sec : null), secEstimated:!!s.secEstimated,
+      sets:(s.sets||[]).map(x=>({ex:x.ex, reps:x.reps, target:x.target, mood:x.mood})) })),
+    events:S.events, shares:S.shares, milestones:S.milestones, levels:S.levels,
+    photo:{ count:S.photo.count, last:S.photo.last },     // 写真そのものは入れない
+    weekly:S.weekly, restBank:S.restBank,
+  };
+}
+function saveNick(){
+  const v = document.getElementById("fNick").value.trim().slice(0,20);
+  if(!v){ toast("ニックネームを入れてください"); return; }
+  S.participant = Object.assign({joinedAt:todayStr()}, S.participant||{}, {nick:v});
+  logEvent("join", {nick:v});
+  render(); toast("保存しました");
+}
+async function sendExport(){
+  const nick = (S.participant && S.participant.nick) || "";
+  if(!nick){ toast("先にニックネームを入れて保存してください"); return; }
+  logEvent("export");
+  const name = `kintore_${nick.replace(/[\\/:*?"<>|\s]/g,"_")}_${todayStr()}.json`;
+  const file = new File([JSON.stringify(exportData())], name, {type:"application/json"});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:"筋トレ試用の記録", text:`筋トレ試用の記録（${nick}）`}); return; }
+    catch(e){ if(e && e.name==="AbortError") return; }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  toast("記録ファイルを保存しました。LINEのトークの「ファイル」から送ってください");
+}
+function copyExport(){
+  if(!(S.participant && S.participant.nick)){ toast("先にニックネームを入れて保存してください"); return; }
+  logEvent("export", {via:"copy"});
+  if(navigator.clipboard) navigator.clipboard.writeText(JSON.stringify(exportData()))
+    .then(()=>toast("コピーしました。LINEに貼り付けて送ってください"))
+    .catch(()=>toast("コピーできませんでした"));
+}
+
 /* ---------------- 設定 ---------------- */
 function renderSettings(){
   const w=S.weekly;
   const wagers=[0,100,300,500];
   app().innerHTML = `
+  <div class="seclabel" id="trialCard">試用に参加している方へ</div>
+  <div class="card">
+    <div class="h2">記録を送る</div>
+    <p class="tiny">週に1回、下のボタンで記録を送ってください。送られるのは<b style="color:var(--txt)">ボタンを押したときだけ</b>です。</p>
+    <div class="note note-gray mt8">送るもの：日付・回数・時間・気分・記録のしかた・アプリを開いた日時・メニューの条件・LINEで送った回数・写真の枚数<br>
+      送らないもの：<b style="color:var(--txt)">写真そのもの、「自分との約束」の文章</b></div>
+    <div class="field mt12">
+      <label class="fl">ニックネーム（集計で見分けるためだけに使います）</label>
+      <input type="text" id="fNick" maxlength="20" placeholder="例：たろう" value="${esc((S.participant&&S.participant.nick)||"")}">
+    </div>
+    <button class="btn btn-plain mt8" onclick="saveNick()">ニックネームを保存</button>
+    <button class="btn btn-mint" onclick="sendExport()">記録を送る</button>
+    <button class="btn btn-ghost" onclick="copyExport()">送れないとき：記録をコピーする</button>
+  </div>
+
   <div class="seclabel">設定</div>
   <div class="card tight">
     <div class="h2">メニューの条件</div>
@@ -1462,6 +1531,8 @@ function renderHistory(){
    ========================================================== */
 load();
 view = !S.profile ? "onboard" : (isComeback() ? "comeback" : "home");
+logEvent("open", {view});                                   // 開いただけの日も分かるように
+if(view==="comeback") logEvent("comeback_shown", {gap:daysSince()});
 render();
 document.addEventListener("click", ()=>{ A.init(); A.resume(); }, {once:true});
 window.addEventListener("beforeunload", ()=>{ try{ POD.stop(); }catch(e){} });
