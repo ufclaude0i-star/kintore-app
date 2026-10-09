@@ -305,7 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
-const APP_VERSION = "2026-09-19b";   // 送った記録に付ける版の名前（集計で見分ける）
+const APP_VERSION = "2026-10-09";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -1303,9 +1303,31 @@ function logEvent(type, data){
   S.events = (S.events||[]).concat(Object.assign({t:nowStamp(), type}, data||{})).slice(-3000);
   save();
 }
+/* 入り口の数字：開いた → 4問を終えた → 1回記録した → 2日目も開いた、のどこまで進んだか。
+   送る記録の中にまとめて入れておくと、集計が1回で済む。 */
+function funnelStats(){
+  const ev = S.events || [];
+  const opens = ev.filter(e=>e.type==="open").map(e=>e.t);
+  const days  = [...new Set(opens.map(t=>t.slice(0,10)))].sort();   // 念のため日付順に並べる
+  const ob    = ev.find(e=>e.type==="onboard");
+  const first = S.sessions[0];
+  const last  = days[days.length-1] || null;
+  return {
+    firstOpen:   days[0] || S.createdAt || null,      // 初めて開いた日
+    secondOpen:  days[1] || null,                     // 2日目に開いたか（空なら1日で終わった）
+    lastOpen:    last,                                // 最後に開いた日
+    openDays:    days.length,                         // 開いた日数
+    onboardAt:   ob ? ob.t : null,                    // 最初の4問を終えた日時
+    firstRecord: first ? first.date : null,           // 初めて記録した日
+    recordDays:  uniqueDays(),                        // 記録した日数
+    aliveDays:   (days[0] && last) ? daysBetween(days[0], last) : null,  // 初回から最後に開くまでの日数
+    quietDays:   last ? daysBetween(last, todayStr()) : null,            // 最後に開いてから何日たったか
+  };
+}
 function exportData(){
   return {
     format:"kintore-export", formatVersion:1, appVersion:APP_VERSION,
+    funnel: funnelStats(),
     exportedAt:nowStamp(), today:todayStr(),
     participant:S.participant, createdAt:S.createdAt, profile:S.profile,
     sessions:S.sessions.map(s=>({ date:s.date, mode:s.mode||"guided", totalReps:s.totalReps,
