@@ -305,7 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
-const APP_VERSION = "2026-10-09";   // 送った記録に付ける版の名前（集計で見分ける）
+const APP_VERSION = "2026-10-10";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -1558,6 +1558,15 @@ if(view==="comeback") logEvent("comeback_shown", {gap:daysSince()});
 render();
 document.addEventListener("click", ()=>{ A.init(); A.resume(); }, {once:true});
 window.addEventListener("beforeunload", ()=>{ try{ POD.stop(); }catch(e){} });
+
+/* ホーム画面から開き直したときに、ページが読み込み直されないことがある。
+   画面が表示に戻ったとき、前回の記録から1時間以上たっていれば「開いた」として記録する。 */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState !== "visible") return;
+  const last = (S.events||[]).filter(e=>e.type==="open").slice(-1)[0];
+  const ms = last ? (Date.now() - new Date(last.t.replace(" ","T")).getTime()) : Infinity;
+  if(ms >= 60*60*1000){ logEvent("open", {view, resumed:true}); }
+});
 </script>
 </body>
 </html>
