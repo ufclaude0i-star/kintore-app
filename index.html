@@ -305,7 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
-const APP_VERSION = "2026-10-10";   // 送った記録に付ける版の名前（集計で見分ける）
+const APP_VERSION = "2026-10-16";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -349,6 +349,11 @@ function freshState(){
     audio: { rss:"", url:"", title:"", pos:0 },
     profile: null,                // 最初の4問の答え {goal, exp, place, minutes}
   };
+}
+/* LINEなどアプリの中のブラウザで開かれていないか。
+   そのままだと記録が消えたり、ホーム画面に追加できないことがあるので、ホームで案内する。 */
+function isInApp(){
+  return /\bLine\/|FBAN|FBAV|Instagram|KAKAOTALK|Twitter/i.test(navigator.userAgent || "");
 }
 let STORAGE_OK = true;
 function checkStorage(){
@@ -562,10 +567,17 @@ function renderHome(){
 
   let html = "";
 
+  if(isInApp()){
+    html += `<div class="note note-rose" style="margin-bottom:12px">
+      <b>LINEなどの中のブラウザで開いています。</b><br>
+      右上のメニューから<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
+      そのままだと、記録が消えたり、ホーム画面に追加できないことがあります。
+    </div>`;
+  }
   if(!STORAGE_OK){
     html += `<div class="note note-rose" style="margin-bottom:12px">
-      <b>この環境では記録が保存されません。</b><br>
-      ページを閉じると消えます。保存を効かせるには、ファイルを直接ブラウザで開いてください。
+      <b>この端末では記録が保存されません。</b><br>
+      ページを閉じると消えます。SafariやChromeで開き直すか、プライベートモードを解除してください。
     </div>`;
   }
 
