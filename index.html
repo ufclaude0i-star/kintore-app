@@ -305,7 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
-const APP_VERSION = "2026-10-16";   // 送った記録に付ける版の名前（集計で見分ける）
+const APP_VERSION = "2026-10-16b";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -542,14 +542,34 @@ function toast(msg){
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
 function render(){
-  if(view==="home")      return renderHome();
-  if(view==="comeback")  return renderComeback();
-  if(view==="session")   return renderSession();
-  if(view==="settings")  return renderSettings();
-  if(view==="history")   return renderHistory();
-  if(view==="onboard")   return renderOnboard();
-  if(view==="photos")    return renderPhotos();
-  renderHome();
+  if(view==="home")           renderHome();
+  else if(view==="comeback")  renderComeback();
+  else if(view==="session")   renderSession();
+  else if(view==="settings")  renderSettings();
+  else if(view==="history")   renderHistory();
+  else if(view==="onboard")   renderOnboard();
+  else if(view==="photos")    renderPhotos();
+  else                        renderHome();
+  if(view!=="session") topNotice();     // トレーニング中以外は、どの画面でも上に案内を出す
+}
+
+/* アプリ内ブラウザ・保存できない端末の案内。画面の一番上に差し込む */
+function topNotice(){
+  let html = "";
+  if(isInApp()){
+    html += `<div class="note note-rose" style="margin-bottom:12px">
+      <b>LINEなどの中のブラウザで開いています。</b><br>
+      右上のメニューから<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
+      そのままだと、記録が消えたり、ホーム画面に追加できないことがあります。
+    </div>`;
+  }
+  if(!STORAGE_OK){
+    html += `<div class="note note-rose" style="margin-bottom:12px">
+      <b>この端末では記録が保存されません。</b><br>
+      ページを閉じると消えます。SafariやChromeで開き直すか、プライベートモードを解除してください。
+    </div>`;
+  }
+  if(html) app().insertAdjacentHTML("afterbegin", html);
 }
 
 /* ---------------- ホーム ---------------- */
@@ -567,19 +587,6 @@ function renderHome(){
 
   let html = "";
 
-  if(isInApp()){
-    html += `<div class="note note-rose" style="margin-bottom:12px">
-      <b>LINEなどの中のブラウザで開いています。</b><br>
-      右上のメニューから<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
-      そのままだと、記録が消えたり、ホーム画面に追加できないことがあります。
-    </div>`;
-  }
-  if(!STORAGE_OK){
-    html += `<div class="note note-rose" style="margin-bottom:12px">
-      <b>この端末では記録が保存されません。</b><br>
-      ページを閉じると消えます。SafariやChromeで開き直すか、プライベートモードを解除してください。
-    </div>`;
-  }
 
   // 賭けの自動停止のお知らせ（復帰画面とは別のタイミングで出す）
   if(S.pendingWagerStop){
@@ -733,6 +740,10 @@ function renderOnboard(){
     <div class="h1">4つだけ教えてください</div>
     <p class="sub">答えから、今日やるメニューをアプリが自動で組みます。あとからいつでも変えられます。</p>
   </div>
+  <p class="tiny" style="margin:-4px 2px 14px">
+    LINEやInstagramから開いた人へ：右上のメニューで<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
+    そのまま使うと、記録が消えることがあります。
+  </p>
   ${q("① 目的", "", "goal", Object.entries(GOALS).map(([k,g])=>[k,g.label]), 1)}
   ${q("② 筋トレの経験", "最初の回数や重さが変わります", "exp", Object.entries(EXPS).map(([k,e])=>[k,e.label]), 1)}
   ${q("③ やる場所", "", "place", Object.entries(PLACES))}
