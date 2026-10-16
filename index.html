@@ -305,7 +305,7 @@ const COMEBACK_DAYS = 7;
 const WAGER_STOP_STREAK = 3;
 // 前の版の機能（音声・今週の宣言・ポイント）。友達に試してもらう版では画面に出さない（コードは残してある）
 const LEGACY = false;
-const APP_VERSION = "2026-10-16b";   // 送った記録に付ける版の名前（集計で見分ける）
+const APP_VERSION = "2026-10-16c";   // 送った記録に付ける版の名前（集計で見分ける）
 
 /* ==========================================================
    1. 状態
@@ -553,14 +553,33 @@ function render(){
   if(view!=="session") topNotice();     // トレーニング中以外は、どの画面でも上に案内を出す
 }
 
+/* このページのURLをコピーする（アプリ内ブラウザから抜け出すため） */
+function copyAppUrl(){
+  const url = location.href.split("#")[0].split("?")[0];
+  const ok = ()=>toast("コピーしました。SafariやChromeを開いて、上のアドレス欄に貼り付けてください");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(ok).catch(()=>prompt("このURLを長押ししてコピーしてください", url));
+  }else{
+    prompt("このURLを長押ししてコピーしてください", url);
+  }
+}
+
 /* アプリ内ブラウザ・保存できない端末の案内。画面の一番上に差し込む */
 function topNotice(){
   let html = "";
   if(isInApp()){
+    const android = /Android/i.test(navigator.userAgent||"");
     html += `<div class="note note-rose" style="margin-bottom:12px">
-      <b>LINEなどの中のブラウザで開いています。</b><br>
-      右上のメニューから<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
-      そのままだと、記録が消えたり、ホーム画面に追加できないことがあります。
+      <b>いまLINEの中で開いています。このままだと記録が消えることがあります。</b><br>
+      下のボタンでURLをコピーして、${android?"Chrome":"Safari"}に貼り付けて開き直してください。
+      <button class="btn btn-ghost" style="margin:10px 0 2px" onclick="copyAppUrl()">URLをコピーする</button>
+      ${android?`<a class="btn btn-ghost" style="margin:0 0 6px" href="intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end">Chromeで開く</a>`:""}
+      <p class="tiny" style="margin:6px 0 0">
+        メニューから開く場合：<br>
+        ・iPhone … 画面の下にある「<b>↑</b>」（共有）を押して「<b>Safariで開く</b>」<br>
+        ・Android … 画面の右上にある「<b>⋮</b>」（点が縦に3つ）を押して「<b>他のアプリで開く</b>」<br>
+        ※ LINEの版によっては「…」や「ブラウザで開く」という名前になっています
+      </p>
     </div>`;
   }
   if(!STORAGE_OK){
@@ -741,8 +760,9 @@ function renderOnboard(){
     <p class="sub">答えから、今日やるメニューをアプリが自動で組みます。あとからいつでも変えられます。</p>
   </div>
   <p class="tiny" style="margin:-4px 2px 14px">
-    LINEやInstagramから開いた人へ：右上のメニューで<b>「ブラウザで開く」（SafariやChrome）</b>を選んでください。
-    そのまま使うと、記録が消えることがあります。
+    LINEから開いた人へ：そのまま使うと記録が消えることがあります。
+    画面の下の「<b>↑</b>」（iPhone）か右上の「<b>⋮</b>」（Android）を押して、
+    <b>SafariやChromeで開き直して</b>ください。
   </p>
   ${q("① 目的", "", "goal", Object.entries(GOALS).map(([k,g])=>[k,g.label]), 1)}
   ${q("② 筋トレの経験", "最初の回数や重さが変わります", "exp", Object.entries(EXPS).map(([k,e])=>[k,e.label]), 1)}
